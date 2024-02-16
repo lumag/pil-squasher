@@ -138,6 +138,7 @@ int main(int argc, char **argv)
 			continue;
 
 		segment = malloc(p_filesz);
+		n = 0;
 
 		/*
 		 * Attempt to read the hash chunk (type 2) directly following
@@ -146,24 +147,24 @@ int main(int argc, char **argv)
 		if (((p_flags >> 24) & 7) == 2) {
 			r_offset = hashoffset;
 			hashoffset += p_filesz;
-		} else {
-			r_offset = p_offset;
+			n = pread(mdt, segment, p_filesz, r_offset);
 		}
 
-		n = pread(mdt, segment, p_filesz, r_offset);
-		if (n < 0) {
-			errx(1, "failed to load segment %d: %zd\n", i, n);
-		} else if (n == 0) {
+		if (n == 0) {
 			sprintf(ext, ".b%02d", i);
 
 			bxx = open(argv[2], O_RDONLY);
 			if (bxx < 0)
 				warn("failed to open %s", argv[2]);
 
-			read(bxx, segment, p_filesz);
+			n = read(bxx, segment, p_filesz);
 
 			close(bxx);
 		}
+
+		if (n < 0)
+			errx(1, "failed to load segment %d: %zd\n", i, n);
+
 		pwrite(mbn, segment, p_filesz, p_offset);
 
 		free(segment);
